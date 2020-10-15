@@ -1,0 +1,33 @@
+- name: Create Servers
+  os_server:
+    cloud: "{{ __server.cloud | default('openstack') }}"
+    name: "{{ __server.instance_name }}"
+    image: "{{ __server.image }}"
+    key_name: "{{ __server.key_name | default('ansible_ssh_key') }}"
+    flavor: "{{ __server.flavor | default('m2.medium')}}"
+    security_groups: "{{ __server.security_group_name }}"
+    delete_fip: yes
+    wait: no
+    nics:
+    - net-name: int_network
+    meta: "group=testservers, deployment_name=Dev"
+    userdata: |
+      #!/bin/bash
+      curl -o /tmp/openstack.pub http://www.opentlc.com/download/ansible_bootcamp/openstack_keys/openstack.pub
+      cat /tmp/openstack.pub >> /home/cloud-user/.ssh/authorized_keys
+  loop: "{{ openstack_servers }}"
+  loop_control:
+    loop_var: __server
+
+- name: Add floating IP to instance
+  os_floating_ip:
+    cloud: "{{ __server.cloud | default('openstack') }}"
+    state: present
+    reuse: yes
+    server: "{{ __server.instance_name }}"
+    network: ext_network
+    wait: true
+    timeout: 200
+  loop: "{{ openstack_servers }}"
+  loop_control:
+    loop_var: __server
